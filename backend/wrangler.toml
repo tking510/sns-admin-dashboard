@@ -1,0 +1,22 @@
+name = "sns-admin-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "sns-admin-db"
+database_id = "" # 後で作成したDBのIDを入れる
+
+# R2 Bucket binding (for images)
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "sns-admin-images"
+
+# Environment variables
+[vars]
+API_VERSION = "v1"
+
+# Secrets (set via wrangler secret put)
+# AUTH_USERNAME = "admin"
+# AUTH_PASSWORD = "sloten1234"
