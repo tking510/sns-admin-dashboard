@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分析ダッシュボード | SNS Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: #1a1d27;
+      border-bottom: 1px solid #2d3748;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .header-nav a {
+      color: #94a3b8;
+      text-decoration: none;
+      margin-left: 20px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .header-nav a:hover, .header-nav a.active { color: #60a5fa; }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* フィルター */
+    .filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      background: #1a1d27;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+
+    /* KPIカード */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .kpi-card {
+      background: #1a1d27;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent, #2563eb);
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 6px;
+    }
+
+    /* グラフグリッド */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: #1a1d27;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .chart-card.wide { grid-column: 1 / -1; }
+
+    .chart-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 16px;
+    }
+
+    .chart-wrap { position: relative; height: 260px; }
+
+    /* AIパネル */
+    .ai-panel {
+      background: linear-gradient(135deg, #1a1d27, #1e1b4b);
+      border: 1px solid #4338ca;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+
+    .ai-panel-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #818cf8;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ai-recs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .ai-rec {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .ai-rec-type {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #818cf8;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .ai-rec-text { font-size: 13px; color: #e2e8f0; line-height: 1.5; }
+
+    .ai-rec-confidence {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .confidence-bar {
+      height: 3px;
+      background: #374151;
+      border-radius: 2px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      background: #818cf8;
+      border-radius: 2px;
+    }
+
+    /* リンクテーブル */
+    .links-card {
+      background: #1a1d27;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 28px;
+    }
+
+    .links-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .btn-primary {
+      padding: 8px 16px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover { background: #1d4ed8; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      padding: 8px 12px;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    td {
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid #1e293b;
+      vertical-align: middle;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-blue { background: rgba(37,99,235,0.2); color: #60a5fa; }
+    .badge-green { background: rgba(16,185,129,0.2); color: #34d399; }
+
+    .url-cell {
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    .clicks-big {
+      font-size: 18px;
+      font-weight: 700;
+      color: #60a5fa;
+    }
+
+    /* ローディング */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 120px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid #374151;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #1a1d27;
+      border: 1px solid #374151;
+      border-radius: 16px;
+      padding: 28px;
+      width: 480px;
+      max-width: 95vw;
+    }
+
+    .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+
+    .form-group { margin-bottom: 14px; }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f1117;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #2563eb;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .btn-secondary {
+      padding: 8px 16px;
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .copy-btn {
+      padding: 4px 10px;
+      background: #1e293b;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      color: #94a3b8;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+    .short-url-result {
+      background: #0f1117;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 14px;
+      font-size: 13px;
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>📊 SNS Admin</h1>
+    <nav class="header-nav">
+      <a href="index.html">投稿管理</a>
+      <a href="analytics.html" class="active">分析</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <!-- 期間フィルター -->
+    <div class="filters">
+      <span style="font-size:13px;color:#64748b;">期間：</span>
+      <button class="filter-btn" data-days="7">7日</button>
+      <button class="filter-btn active" data-days="30">30日</button>
+      <button class="filter-btn" data-days="90">90日</button>
+      <button class="filter-btn" data-days="365">全期間</button>
+      <button class="filter-btn" id="refreshBtn" style="margin-left:auto;">🔄 更新</button>
+    </div>
+
+    <!-- KPIカード -->
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="loading"><div class="spinner"></div>読み込み中...</div>
+    </div>
+
+    <!-- グラフ -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">📱 プラットフォーム別投稿数</div>
+        <div class="chart-wrap"><canvas id="platformChart"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">⏰ 時間帯別エンゲージメント</div>
+        <div class="chart-wrap"><canvas id="timeChart"></canvas></div>
+      </div>
+
+      <div class="chart-card wide">
+        <div class="chart-title">📈 エンゲージメント推移</div>
+        <div class="chart-wrap"><canvas id="engagementChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- AI提案パネル -->
+    <div class="ai-panel">
+      <div class="ai-panel-title">
+        🤖 AI最適化提案
+        <button class="btn-primary" id="refreshAI" style="font-size:12px;padding:6px 12px;">再分析</button>
+      </div>
+      <div class="ai-recs" id="aiRecs">
+        <div class="loading"><div class="spinner"></div>AI分析中...</div>
+      </div>
+    </div>
+
+    <!-- リンク流入 -->
+    <div class="links-card">
+      <div class="links-header">
+        <div class="chart-title" style="margin:0;">🔗 リンク流入分析</div>
+        <button class="btn-primary" id="shortenBtn">+ リンク短縮</button>
+      </div>
+      <div id="linksTable">
+        <div class="loading"><div class="spinner"></div>読み込み中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- リンク短縮モーダル -->
+  <div class="modal-overlay" id="shortenModal">
+    <div class="modal">
+      <h3>🔗 リンク短縮</h3>
+      <div class="form-group">
+        <label>元のURL</label>
+        <input type="url" id="originalUrl" placeholder="https://example.com/..." />
+      </div>
+      <div class="form-group">
+        <label>UTM Source（任意）</label>
+        <input type="text" id="utmSource" placeholder="telegram" />
+      </div>
+      <div class="form-group">
+        <label>UTM Campaign（任意）</label>
+        <input type="text" id="utmCampaign" placeholder="sns-post" />
+      </div>
+      <div id="shortUrlResult" style="display:none;"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="cancelModal">キャンセル</button>
+        <button class="btn-primary" id="doShorten">短縮する</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'https://sns-admin-api.slotenpromotion.com';
+    let currentDays = 30;
+    let charts = {};
+
+    // ページ初期化
+    async function init() {
+      await Promise.all([
+        loadOverview(),
+        loadPlatformChart(),
+        loadTimeChart(),
+        loadEngagementChart(),
+        loadAIRecommendations(),
+        loadLinksTable(),
+      ]);
+    }
+
+    // KPIロード
+    async function loadOverview() {
+      const kpiGrid = document.getElementById('kpiGrid');
+      try {
+        const res = await fetch(`${API}/api/analytics/overview`);
+        const data = await res.json();
+
+        kpiGrid.innerHTML = `
+          <div class="kpi-card" style="--accent:#2563eb">
+            <div class="kpi-label">総投稿数</div>
+            <div class="kpi-value">${data.total_posts || 0}</div>
+            <div class="kpi-sub">投稿済: ${data.posted_posts || 0}</div>
+          </div>
+          <div class="kpi-card" style="--accent:#10b981">
+            <div class="kpi-label">成功率</div>
+            <div class="kpi-value">${data.success_rate || 0}%</div>
+            <div class="kpi-sub">失敗: ${data.failed_posts || 0}件</div>
+          </div>
+          <div class="kpi-card" style="--accent:#f59e0b">
+            <div class="kpi-label">総エンゲージメント</div>
+            <div class="kpi-value">${fmtNum(data.total_engagement || 0)}</div>
+            <div class="kpi-sub">いいね+コメント+シェア</div>
+          </div>
+          <div class="kpi-card" style="--accent:#8b5cf6">
+            <div class="kpi-label">リンク総クリック</div>
+            <div class="kpi-value">${fmtNum(data.total_link_clicks || 0)}</div>
+            <div class="kpi-sub">計測済みリンク</div>
+          </div>
+        `;
+      } catch (e) {
+        kpiGrid.innerHTML = `<div class="loading">データ取得に失敗しました</div>`;
+      }
+    }
+
+    // プラットフォーム円グラフ
+    async function loadPlatformChart() {
+      try {
+        const res = await fetch(`${API}/api/analytics/platform`);
+        const data = await res.json();
+
+        const counts = data.post_counts || {};
+        const labels = Object.keys(counts);
+        const values = Object.values(counts);
+
+        const colors = ['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+
+        destroyChart('platformChart');
+        charts.platform = new Chart(document.getElementById('platformChart'), {
+          type: 'doughnut',
+          data: {
+            labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+            datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderWidth: 0 }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 12 } } },
+            },
+          },
+        });
+      } catch (e) {
+        document.getElementById('platformChart').parentNode.innerHTML = '<div class="loading">データなし</div>';
+      }
+    }
+
+    // 時間帯折れ線グラフ
+    async function loadTimeChart() {
+      try {
+        const res = await fetch(`${API}/api/analytics/time`);
+        const data = await res.json();
+
+        const labels = Array.from({length: 24}, (_, i) => `${i}時`);
+        const engagement = Array(24).fill(0);
+        for (const row of data) {
+          engagement[row.hour] = parseFloat(row.avg_engagement) || 0;
+        }
+
+        destroyChart('timeChart');
+        charts.time = new Chart(document.getElementById('timeChart'), {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: '平均エンゲージメント',
+              data: engagement,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245,158,11,0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 3,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: '#64748b', maxTicksLimit: 8 }, grid: { color: '#1e293b' } },
+              y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+            },
+          },
+        });
+      } catch (e) {}
+    }
+
+    // エンゲージメント推移
+    async function loadEngagementChart() {
+      try {
+        const res = await fetch(`${API}/api/analytics/engagement?days=${currentDays}`);
+        const data = await res.json();
+
+        const labels = data.map(r => r.date);
+        const likes = data.map(r => r.likes || 0);
+        const comments = data.map(r => r.comments || 0);
+        const shares = data.map(r => r.shares || 0);
+
+        destroyChart('engagementChart');
+        charts.engagement = new Chart(document.getElementById('engagementChart'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'いいね', data: likes, backgroundColor: '#2563eb' },
+              { label: 'コメント', data: comments, backgroundColor: '#10b981' },
+              { label: 'シェア', data: shares, backgroundColor: '#f59e0b' },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: '#94a3b8', font: { size: 12 } } },
+            },
+            scales: {
+              x: { stacked: true, ticks: { color: '#64748b', maxTicksLimit: 10 }, grid: { color: '#1e293b' } },
+              y: { stacked: true, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+            },
+          },
+        });
+      } catch (e) {}
+    }
+
+    // AI提案
+    async function loadAIRecommendations() {
+      const aiRecs = document.getElementById('aiRecs');
+      aiRecs.innerHTML = '<div class="loading"><div class="spinner"></div>AI分析中...</div>';
+      try {
+        const res = await fetch(`${API}/api/analytics/ai-recommend`);
+        const data = await res.json();
+
+        const typeLabels = {
+          time: '⏰ 最適投稿時間',
+          content: '📝 コンテンツ提案',
+          platform: '📱 プラットフォーム',
+          hashtags: '#️⃣ ハッシュタグ',
+          best_time: '⏰ 最適投稿時間',
+          content_tips: '📝 コンテンツ提案',
+          platform_focus: '📱 プラットフォーム',
+        };
+
+        if (!data.recommendations || data.recommendations.length === 0) {
+          aiRecs.innerHTML = '<div class="loading">投稿データが不足しています。まず投稿を増やしましょう。</div>';
+          return;
+        }
+
+        aiRecs.innerHTML = data.recommendations.map(rec => `
+          <div class="ai-rec">
+            <div class="ai-rec-type">${typeLabels[rec.type] || rec.type}</div>
+            <div class="ai-rec-text">${rec.recommendation}</div>
+            <div class="ai-rec-confidence">
+              信頼度: ${Math.round((rec.confidence || 0) * 100)}%
+              <div class="confidence-bar">
+                <div class="confidence-fill" style="width:${(rec.confidence || 0) * 100}%"></div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        aiRecs.innerHTML = '<div class="loading">AI分析に失敗しました</div>';
+      }
+    }
+
+    // リンクテーブル
+    async function loadLinksTable() {
+      const linksTable = document.getElementById('linksTable');
+      try {
+        const res = await fetch(`${API}/api/analytics/links`);
+        const data = await res.json();
+
+        if (!data.links || data.links.length === 0) {
+          linksTable.innerHTML = '<div class="loading">リンクデータがありません。「リンク短縮」からリンクを作成してください。</div>';
+          return;
+        }
+
+        linksTable.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>短縮URL</th>
+                <th>元のURL</th>
+                <th>クリック数</th>
+                <th>作成日</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.links.map(link => `
+                <tr>
+                  <td>
+                    <span class="badge badge-blue">${link.short_code}</span>
+                    <button class="copy-btn" onclick="copyText('https://sns-admin-api.slotenpromotion.com/l/${link.short_code}')">コピー</button>
+                  </td>
+                  <td><div class="url-cell" title="${link.original_url}">${link.original_url}</div></td>
+                  <td><span class="clicks-big">${fmtNum(link.clicks)}</span></td>
+                  <td style="color:#64748b;font-size:12px;">${formatDate(link.created_at)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        linksTable.innerHTML = '<div class="loading">データ取得に失敗しました</div>';
+      }
+    }
+
+    // リンク短縮モーダル
+    document.getElementById('shortenBtn').addEventListener('click', () => {
+      document.getElementById('shortenModal').classList.add('open');
+      document.getElementById('shortUrlResult').style.display = 'none';
+    });
+
+    document.getElementById('cancelModal').addEventListener('click', () => {
+      document.getElementById('shortenModal').classList.remove('open');
+    });
+
+    document.getElementById('doShorten').addEventListener('click', async () => {
+      const url = document.getElementById('originalUrl').value.trim();
+      if (!url) return alert('URLを入力してください');
+
+      try {
+        const res = await fetch(`${API}/api/links/shorten`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            original_url: url,
+            utm_source: document.getElementById('utmSource').value || 'sns',
+            utm_medium: 'social',
+            utm_campaign: document.getElementById('utmCampaign').value || 'post',
+          }),
+        });
+        const data = await res.json();
+
+        const resultEl = document.getElementById('shortUrlResult');
+        resultEl.style.display = 'flex';
+        resultEl.innerHTML = `
+          <div class="short-url-result">
+            <span>${data.short_url}</span>
+            <button class="copy-btn" onclick="copyText('${data.short_url}')">コピー</button>
+          </div>
+        `;
+        loadLinksTable();
+      } catch (e) {
+        alert('短縮に失敗しました');
+      }
+    });
+
+    // フィルターボタン
+    document.querySelectorAll('.filter-btn[data-days]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-days]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentDays = parseInt(btn.dataset.days);
+        loadEngagementChart();
+      });
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', init);
+    document.getElementById('refreshAI').addEventListener('click', loadAIRecommendations);
+
+    // ユーティリティ
+    function destroyChart(id) {
+      if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+    }
+
+    function fmtNum(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return String(n);
+    }
+
+    function formatDate(str) {
+      if (!str) return '-';
+      return new Date(str).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        // コピー成功の簡易フィードバック
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = '✓';
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
