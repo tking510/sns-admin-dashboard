@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNS Admin Dashboard - スロ天</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1><i class="fas fa-share-alt"></i> SNS Admin Dashboard</h1>
+            <p>スロ天 SNS自動投稿管理システム</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Create Post Section -->
+            <section class="section create-post">
+                <h2><i class="fas fa-plus-circle"></i> 新規投稿作成</h2>
+                
+                <form id="postForm" class="post-form">
+                    <!-- Content -->
+                    <div class="form-group">
+                        <label for="content">投稿内容</label>
+                        <textarea id="content" name="content" rows="5" placeholder="投稿内容を入力..." required></textarea>
+                        <div class="char-count"><span id="charCount">0</span> / 280文字</div>
+                    </div>
+
+                    <!-- Platforms -->
+                    <div class="form-group">
+                        <label>投稿先</label>
+                        <div class="platforms">
+                            <label class="platform-checkbox">
+                                <input type="checkbox" name="platform" value="telegram">
+                                <i class="fab fa-telegram"></i> Telegram
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" name="platform" value="discord">
+                                <i class="fab fa-discord"></i> Discord
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" name="platform" value="x">
+                                <i class="fab fa-x-twitter"></i> X (Twitter)
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" name="platform" value="instagram">
+                                <i class="fab fa-instagram"></i> Instagram
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" name="platform" value="facebook">
+                                <i class="fab fa-facebook"></i> Facebook
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" name="platform" value="threads">
+                                <i class="fas fa-at"></i> Threads
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" name="platform" value="youtube">
+                                <i class="fab fa-youtube"></i> YouTube
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" name="platform" value="email">
+                                <i class="fas fa-envelope"></i> メール
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Schedule -->
+                    <div class="form-group">
+                        <label for="scheduled_at">予約日時</label>
+                        <input type="datetime-local" id="scheduled_at" name="scheduled_at" required>
+                    </div>
+
+                    <!-- Image Upload -->
+                    <div class="form-group">
+                        <label for="images">画像（複数可）</label>
+                        <div class="image-upload" id="imageUpload">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>ドラッグ&ドロップまたはクリックして画像を選択</p>
+                            <input type="file" id="images" name="images" multiple accept="image/*" hidden>
+                        </div>
+                        <div class="image-preview" id="imagePreview"></div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="previewBtn">
+                            <i class="fas fa-eye"></i> プレビュー
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Posts List Section -->
+            <section class="section posts-list">
+                <h2><i class="fas fa-list"></i> 投稿一覧</h2>
+                
+                <div class="filter-bar">
+                    <select id="statusFilter">
+                        <option value="all">すべて</option>
+                        <option value="pending">予約済み</option>
+                        <option value="posted">投稿済み</option>
+                        <option value="failed">失敗</option>
+                    </select>
+                    <button class="btn btn-refresh" id="refreshBtn">
+                        <i class="fas fa-sync-alt"></i> 更新
+                    </button>
+                </div>
+
+                <div class="posts-table-container">
+                    <table class="posts-table" id="postsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>内容</th>
+                                <th>投稿先</th>
+                                <th>予約日時</th>
+                                <th>ステータス</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="postsTableBody">
+                            <!-- 動的に生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 スロット天国 SNS Admin Dashboard</p>
+        </footer>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal" id="previewModal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>投稿プレビュー</h3>
+            <div class="preview-content" id="previewContent"></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
